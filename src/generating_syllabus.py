@@ -1,6 +1,7 @@
 import os
 from typing import List, Dict, Any
 
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.messages import (
     BaseMessage,
@@ -8,6 +9,10 @@ from langchain_core.messages import (
     SystemMessage,
     AIMessage,
 )
+
+# Load environment variables from .env file (works locally)
+# On Hugging Face Spaces, the key is set via Secrets in the dashboard
+load_dotenv()
 
 
 # Define a Discuss agent class
@@ -37,23 +42,10 @@ class DiscussAgent:
         input_message: HumanMessage,
     ) -> AIMessage:
         messages = self.update_messages(input_message)
-
         output_message = self.model.invoke(messages)
         self.update_messages(output_message)
-
         return output_message
 
-
-
-with open(".env", "r") as f:
-    env_file = f.readlines()
-
-envs_dict = {
-    key.strip("'"): value.strip("\n")
-    for key, value in [(i.split("=")) for i in env_file]
-}
-
-os.environ["GROQ_API_KEY"] = envs_dict["GROQ_API_KEY"]
 
 # Set up roles
 assistant_role_name = "Instructor"
@@ -148,7 +140,6 @@ task_specify_agent = DiscussAgent(
 
 # Function to generating the syllabus
 def generate_syllabus(topic, task):
-    # Get the specified task
     task_specifier_content = task_specifier_prompt.format(
         assistant_role_name=assistant_role_name,
         user_role_name=user_role_name,
@@ -212,30 +203,24 @@ def generate_syllabus(topic, task):
         user_msg = HumanMessage(content=user_ai_msg.content)
 
         print(f"AI User ({user_role_name}):\n\n{user_msg.content}\n\n")
-
         conversation_history.append("AI User:" + user_msg.content)
 
         assistant_ai_msg = assistant_agent.step(user_msg)
         assistant_msg = HumanMessage(content=assistant_ai_msg.content)
+        conversation_history.append("AI Assistant:" + assistant_msg.content)
 
-        conversation_history.append(
-            "AI Assistant:" + assistant_msg.content
-        )
-
-        print(
-            f"AI Assistant ({assistant_role_name}):\n\n{assistant_msg.content}\n\n"
-        )
+        print(f"AI Assistant ({assistant_role_name}):\n\n{assistant_msg.content}\n\n")
 
         if "<TASK_DONE>" in user_msg.content:
             break
 
     # Summarize the conversation to get the syllabus
     summarizer_sys_msg = SystemMessage(
-        content="Summarize this converasion into a {topic} course syllabus form"
+        content="Summarize this conversation into a {topic} course syllabus form"
     )
 
-    summarizer_prompt = """Here is a comversation history that {assistant_role_name} have disccuss with {user_role_name}: {conversation_history}.
-    Please summarize this converasion into a course syllabus form with the topic from user input."""
+    summarizer_prompt = """Here is a conversation history that {assistant_role_name} have discussed with {user_role_name}: {conversation_history}.
+    Please summarize this conversation into a course syllabus form with the topic from user input."""
 
     summarizer_agent = DiscussAgent(
         summarizer_sys_msg,

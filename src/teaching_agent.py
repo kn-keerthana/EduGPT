@@ -1,21 +1,15 @@
 import os
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 
-
-with open(".env", "r") as f:
-    env_file = f.readlines()
-
-envs_dict = {
-    key.strip("'"): value.strip("\n")
-    for key, value in [(i.split("=")) for i in env_file]
-}
-
-os.environ["GROQ_API_KEY"] = envs_dict["GROQ_API_KEY"]
+# Load environment variables from .env file (works locally)
+# On Hugging Face Spaces, the key is set via Secrets in the dashboard
+load_dotenv()
 
 
 # Chain to generate the next response for the conversation
@@ -121,13 +115,11 @@ class TeachingGPT(BaseModel):
     )
 
     def seed_agent(self, syllabus, task):
-        # Step 1: seed the conversation
         self.syllabus = syllabus
         self.conversation_topic = task
         self.conversation_history = []
 
     def human_step(self, human_input):
-        # process human input
         human_input = human_input + "<END_OF_TURN>"
         self.conversation_history.append(human_input)
 
@@ -140,22 +132,15 @@ class TeachingGPT(BaseModel):
     def _callinstructor(self, inputs: Dict[str, Any]) -> None:
         """Run one step of the instructor agent."""
 
-        # Generate agent's utterance
         ai_message = self.teaching_conversation_utterance_chain.run(
             syllabus=self.syllabus,
             topic=self.conversation_topic,
-            conversation_history="\n".join(
-                self.conversation_history
-            ),
+            conversation_history="\n".join(self.conversation_history),
         )
 
-        # Add agent's response to conversation history
         self.conversation_history.append(ai_message)
 
-        print(
-            "Instructor: ",
-            ai_message.rstrip("<END_OF_TURN>")
-        )
+        print("Instructor: ", ai_message.rstrip("<END_OF_TURN>"))
 
         return ai_message
 
