@@ -65,7 +65,7 @@ User Input (Topic)
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/EduGPT.git
+git clone https://github.com/kn-keerthana/EduGPT.git
 cd EduGPT
 ```
 
@@ -151,7 +151,7 @@ EduGPT/
 
 ## 🌐 Live Demo
 
-> 🔗 [Try it on Hugging Face Spaces](https://huggingface.co/spaces/YOUR_USERNAME/EduGPT)
+> 🔗 [Try it on Hugging Face Spaces](https://huggingface.co/spaces/kn-keerthana/EduGPT)
 
 *(Update this link after deployment)*
 
@@ -205,4 +205,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ## 📬 Contact
 
-Have questions or ideas? Open an [issue](https://github.com/YOUR_USERNAME/EduGPT/issues) on GitHub.
+Have questions or ideas? Open an [issue](https://github.com/kn-keerthana/EduGPT/issues) on GitHub.

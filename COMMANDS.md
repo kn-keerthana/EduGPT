@@ -12,7 +12,7 @@ git --version
 ### Step 2: Configure Git with your name/email (once ever)
 ```
 git config --global user.name "Your Name"
-git config --global user.email "your@email.com"
+git config --global user.email "your-email@gmail.com"
 ```
 
 ---
@@ -47,11 +47,11 @@ git commit -m "Initial commit: EduGPT with Groq + LLaMA 3.3"
 4. Set to Public
 5. Do NOT check "Add a README" (we already have one)
 6. Click "Create repository"
-7. Copy the URL shown (looks like: https://github.com/YOURNAME/EduGPT.git)
+7. Copy the URL shown (looks like: https://github.com/kn-keerthana/EduGPT.git)
 
 ### Step 8: Connect and push
 ```
-git remote add origin https://github.com/YOURNAME/EduGPT.git
+git remote add origin https://github.com/kn-keerthana/EduGPT.git
 git branch -M main
 git push -u origin main
 ```
@@ -80,11 +80,11 @@ Go to: https://huggingface.co/join
 
 ### Step 4: Push your code to the Space
 ```
-git remote add space https://huggingface.co/spaces/YOURNAME/EduGPT
+git remote add space https://huggingface.co/spaces/kn-keerthana/EduGPT
 git push space main
 ```
 
-Your app will be live at: https://huggingface.co/spaces/YOURNAME/EduGPT
+Your app will be live at: https://huggingface.co/spaces/kn-keerthana/EduGPT
 
 ---
 
