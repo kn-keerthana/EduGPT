@@ -27,7 +27,7 @@ Key contributions:
 • Built and deployed a Gradio web app with streaming responses and session memory
 • Deployed on Hugging Face Spaces with secure API key management
 
-🔗 GitHub: [link] | 🚀 Live Demo: [link]
+🔗 GitHub: https://github.com/kn-keerthana/EduGPT | 🚀 Live Demo: https://huggingface.co/spaces/kn-keerthana/EduGPT
 
 ---
 

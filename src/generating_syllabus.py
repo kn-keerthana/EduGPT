@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
@@ -10,25 +10,17 @@ from langchain_core.messages import (
     AIMessage,
 )
 
-# Load environment variables from .env file (works locally)
-# On Hugging Face Spaces, the key is set via Secrets in the dashboard
 load_dotenv()
 
 
-# Define a Discuss agent class
 class DiscussAgent:
-    def __init__(
-        self,
-        system_message: SystemMessage,
-        model: ChatGroq,
-    ) -> None:
+    def __init__(self, system_message: SystemMessage, model: ChatGroq) -> None:
         self.system_message = system_message
         self.model = model
         self.init_messages()
 
     def reset(self) -> None:
         self.init_messages()
-        return self.stored_messages
 
     def init_messages(self) -> None:
         self.stored_messages = [self.system_message]
@@ -37,23 +29,17 @@ class DiscussAgent:
         self.stored_messages.append(message)
         return self.stored_messages
 
-    def step(
-        self,
-        input_message: HumanMessage,
-    ) -> AIMessage:
+    def step(self, input_message: HumanMessage) -> AIMessage:
         messages = self.update_messages(input_message)
         output_message = self.model.invoke(messages)
         self.update_messages(output_message)
         return output_message
 
 
-# Set up roles
 assistant_role_name = "Instructor"
 user_role_name = "Teaching Assistant"
+word_limit = 50
 
-word_limit = 50  # word limit for task brainstorming
-
-# Create inception prompts for AI assistant and AI user for role-playing
 assistant_inception_prompt = """Never forget you are a {assistant_role_name} and I am a {user_role_name}. Never flip roles! Never instruct me!
 We share a common interest in collaborating to successfully complete a task.
 You must help me to complete the task.
@@ -88,11 +74,8 @@ Input: <YOUR_INPUT>
 Instruction: <YOUR_INSTRUCTION>
 Input: None
 
-The "Instruction" describes a task or question. The paired "Input" provides further context or information for the requested "Instruction".
-
 You must give me one instruction at a time.
 I must write a response that appropriately completes the requested instruction.
-I must decline your instruction honestly if I cannot perform the instruction due to physical, moral, legal reasons or my capability and explain the reasons.
 You should instruct me not ask me questions.
 Now you must start to instruct me using the two ways described above.
 Do not add anything else other than your instruction and the optional corresponding input!
@@ -101,29 +84,25 @@ When the task is completed, you must only reply with a single word <TASK_DONE>.
 Never say <TASK_DONE> unless my responses have solved your task."""
 
 
-# Get message from system
 def get_sys_msgs(assistant_role_name: str, user_role_name: str, task: str):
-    assistant_sys_content = assistant_inception_prompt.format(
-        assistant_role_name=assistant_role_name,
-        user_role_name=user_role_name,
-        task=task,
+    assistant_sys_msg = SystemMessage(
+        content=assistant_inception_prompt.format(
+            assistant_role_name=assistant_role_name,
+            user_role_name=user_role_name,
+            task=task,
+        )
     )
-    assistant_sys_msg = SystemMessage(content=assistant_sys_content)
-
-    user_sys_content = user_inception_prompt.format(
-        assistant_role_name=assistant_role_name,
-        user_role_name=user_role_name,
-        task=task,
+    user_sys_msg = SystemMessage(
+        content=user_inception_prompt.format(
+            assistant_role_name=assistant_role_name,
+            user_role_name=user_role_name,
+            task=task,
+        )
     )
-    user_sys_msg = SystemMessage(content=user_sys_content)
-
     return assistant_sys_msg, user_sys_msg
 
 
-# Create a task specify agent for brainstorming and get the specified task
-task_specifier_sys_msg = SystemMessage(
-    content="You can make a task more specific."
-)
+task_specifier_sys_msg = SystemMessage(content="You can make a task more specific.")
 
 task_specifier_prompt = """Here is a task that {assistant_role_name} will help {user_role_name} to complete: {task}.
 Please make it more specific. Be creative and imaginative.
@@ -131,112 +110,81 @@ Please reply with the specified task in {word_limit} words or less. Do not add a
 
 task_specify_agent = DiscussAgent(
     task_specifier_sys_msg,
-    ChatGroq(
-        temperature=1.0,
-        model_name="llama-3.3-70b-versatile",
-    ),
+    ChatGroq(temperature=1.0, model_name="llama-3.3-70b-versatile"),
 )
 
 
-# Function to generating the syllabus
 def generate_syllabus(topic, task):
-    task_specifier_content = task_specifier_prompt.format(
-        assistant_role_name=assistant_role_name,
-        user_role_name=user_role_name,
-        task=task,
-        word_limit=word_limit,
-    )
-    task_specifier_msg = HumanMessage(content=task_specifier_content)
-
-    specified_task_msg = task_specify_agent.step(task_specifier_msg)
-    specified_task = specified_task_msg.content
-
-    assistant_sys_msg, user_sys_msg = get_sys_msgs(
-        assistant_role_name,
-        user_role_name,
-        specified_task,
-    )
-
-    assistant_agent = DiscussAgent(
-        assistant_sys_msg,
-        ChatGroq(
-            temperature=0.2,
-            model_name="llama-3.3-70b-versatile",
-        ),
-    )
-
-    user_agent = DiscussAgent(
-        user_sys_msg,
-        ChatGroq(
-            temperature=0.2,
-            model_name="llama-3.3-70b-versatile",
-        ),
-    )
-
-    # Reset agents
-    assistant_agent.reset()
-    user_agent.reset()
-
-    # Initialize chats
-    assistant_msg = HumanMessage(
-        content=(
-            f"{user_sys_msg.content}. "
-            "Now start to give me introductions one by one. "
-            "Only reply with Instruction and Input."
+    try:
+        task_specifier_content = task_specifier_prompt.format(
+            assistant_role_name=assistant_role_name,
+            user_role_name=user_role_name,
+            task=task,
+            word_limit=word_limit,
         )
-    )
+        task_specifier_msg = HumanMessage(content=task_specifier_content)
+        specified_task_msg = task_specify_agent.step(task_specifier_msg)
+        specified_task = specified_task_msg.content
 
-    user_msg = HumanMessage(content=f"{assistant_sys_msg.content}")
-    user_msg = assistant_agent.step(user_msg)
+        assistant_sys_msg, user_sys_msg = get_sys_msgs(
+            assistant_role_name, user_role_name, specified_task
+        )
 
-    print(f"Specified task prompt:\n{specified_task}\n")
+        assistant_agent = DiscussAgent(
+            assistant_sys_msg,
+            ChatGroq(temperature=0.2, model_name="llama-3.3-70b-versatile"),
+        )
+        user_agent = DiscussAgent(
+            user_sys_msg,
+            ChatGroq(temperature=0.2, model_name="llama-3.3-70b-versatile"),
+        )
 
-    conversation_history = []
+        assistant_agent.reset()
+        user_agent.reset()
 
-    # Start role-playing session to solve the task!
-    chat_turn_limit, n = 5, 0
+        assistant_msg = HumanMessage(
+            content=(
+                f"{user_sys_msg.content}. "
+                "Now start to give me introductions one by one. "
+                "Only reply with Instruction and Input."
+            )
+        )
+        user_msg = HumanMessage(content=f"{assistant_sys_msg.content}")
+        user_msg = assistant_agent.step(user_msg)
 
-    while n < chat_turn_limit:
-        n += 1
+        conversation_history = []
+        chat_turn_limit, n = 5, 0
 
-        user_ai_msg = user_agent.step(assistant_msg)
-        user_msg = HumanMessage(content=user_ai_msg.content)
+        while n < chat_turn_limit:
+            n += 1
+            user_ai_msg = user_agent.step(assistant_msg)
+            user_msg = HumanMessage(content=user_ai_msg.content)
+            conversation_history.append("AI User: " + user_msg.content)
 
-        print(f"AI User ({user_role_name}):\n\n{user_msg.content}\n\n")
-        conversation_history.append("AI User:" + user_msg.content)
+            assistant_ai_msg = assistant_agent.step(user_msg)
+            assistant_msg = HumanMessage(content=assistant_ai_msg.content)
+            conversation_history.append("AI Assistant: " + assistant_msg.content)
 
-        assistant_ai_msg = assistant_agent.step(user_msg)
-        assistant_msg = HumanMessage(content=assistant_ai_msg.content)
-        conversation_history.append("AI Assistant:" + assistant_msg.content)
+            if "<TASK_DONE>" in user_msg.content:
+                break
 
-        print(f"AI Assistant ({assistant_role_name}):\n\n{assistant_msg.content}\n\n")
+        # Summarize into a syllabus
+        summarizer_sys_msg = SystemMessage(
+            content=f"Summarize this conversation into a {topic} course syllabus."
+        )
+        summarizer_prompt = (
+            f"Here is a conversation where {assistant_role_name} and {user_role_name} "
+            f"discussed how to teach {topic}:\n\n"
+            + "\n".join(conversation_history)
+            + f"\n\nPlease summarize this into a structured course syllabus for {topic}."
+        )
 
-        if "<TASK_DONE>" in user_msg.content:
-            break
+        summarizer_agent = DiscussAgent(
+            summarizer_sys_msg,
+            ChatGroq(temperature=1.0, model_name="llama-3.3-70b-versatile"),
+        )
+        summarized = summarizer_agent.step(HumanMessage(content=summarizer_prompt))
+        return summarized.content
 
-    # Summarize the conversation to get the syllabus
-    summarizer_sys_msg = SystemMessage(
-        content="Summarize this conversation into a {topic} course syllabus form"
-    )
-
-    summarizer_prompt = """Here is a conversation history that {assistant_role_name} have discussed with {user_role_name}: {conversation_history}.
-    Please summarize this conversation into a course syllabus form with the topic from user input."""
-
-    summarizer_agent = DiscussAgent(
-        summarizer_sys_msg,
-        ChatGroq(
-            temperature=1.0,
-            model_name="llama-3.3-70b-versatile",
-        ),
-    )
-
-    summarizer_content = summarizer_prompt.format(
-        assistant_role_name=assistant_role_name,
-        user_role_name=user_role_name,
-        conversation_history="\n".join(conversation_history),
-    )
-    summarizer_msg = HumanMessage(content=summarizer_content)
-
-    summarizered_msg = summarizer_agent.step(summarizer_msg)
-
-    return summarizered_msg.content
+    except Exception as e:
+        return f"⚠️ Error generating syllabus: {str(e)}\n\nPlease check your GROQ_API_KEY and try again."
