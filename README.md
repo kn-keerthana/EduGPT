@@ -235,6 +235,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 - Powered by [Groq](https://groq.com)
 
 ---
+Minor README update
 
 ## 📬 Contact
 
