@@ -2,7 +2,6 @@ import sys
 import os
 import time
 
-# Add src to path so imports work on both local and Hugging Face
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
 
 import gradio as gr
@@ -12,9 +11,8 @@ from teaching_agent import teaching_agent
 
 load_dotenv()
 
-# Warn clearly if API key is missing
 if not os.getenv("GROQ_API_KEY"):
-    print("⚠️  WARNING: GROQ_API_KEY not set. Set it in .env (local) or HF Space secrets (deployed).")
+    print("WARNING: GROQ_API_KEY not set.")
 
 
 def perform_task(input_text):
@@ -26,19 +24,11 @@ def perform_task(input_text):
     return syllabus
 
 
-def user_message(user_input, history):
-    teaching_agent.human_step(user_input)
-    return "", history + [[user_input, None]]
-
-
-def bot_response(history):
-    bot_message = teaching_agent.instructor_step()
-    bot_message = bot_message.replace("<END_OF_TURN>", "")
-    history[-1][1] = ""
-    for character in bot_message:
-        history[-1][1] += character
-        time.sleep(0.01)
-        yield history
+def chat(message, history):
+    teaching_agent.human_step(message)
+    response = teaching_agent.instructor_step()
+    response = response.replace("<END_OF_TURN>", "")
+    return response
 
 
 with gr.Blocks(title="EduGPT — Your AI Instructor") as demo:
@@ -50,8 +40,8 @@ with gr.Blocks(title="EduGPT — Your AI Instructor") as demo:
 
     with gr.Tab("📋 Step 1: Build Your Syllabus"):
         gr.Markdown(
-            "Enter any topic below and click **Build My Syllabus**. "
-            "Two AI agents will collaborate to design a full course for you (~30 seconds)."
+            "Enter any topic and click **Build My Syllabus**. "
+            "Two AI agents will collaborate to design a full course (~30 seconds)."
         )
         text_input = gr.Textbox(
             label="What topic do you want to learn?",
@@ -63,18 +53,15 @@ with gr.Blocks(title="EduGPT — Your AI Instructor") as demo:
 
     with gr.Tab("💬 Step 2: Chat with Your Instructor"):
         gr.Markdown(
-            "✅ Complete Step 1 first. Then chat with your AI instructor here — "
-            "it will teach you topic by topic, answer questions, and give examples."
+            "✅ Complete Step 1 first, then chat with your AI instructor here."
         )
-        chatbot = gr.Chatbot(height=420, label="Your AI Instructor")
-        msg = gr.Textbox(
-            label="Your message:",
-            placeholder="e.g. Start teaching! / Explain that again / Give me an example",
+        gr.ChatInterface(
+            fn=chat,
+            chatbot=gr.Chatbot(height=420, label="Your AI Instructor"),
+            textbox=gr.Textbox(
+                placeholder="e.g. Start teaching! / Explain that again / Give me an example",
+                label="Your message:",
+            ),
         )
-        clear = gr.Button("🗑️ Clear Chat")
-        msg.submit(user_message, [msg, chatbot], [msg, chatbot], queue=False).then(
-            bot_response, chatbot, chatbot
-        )
-        clear.click(lambda: None, None, chatbot, queue=False)
 
 demo.queue().launch()
